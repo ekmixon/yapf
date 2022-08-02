@@ -157,9 +157,9 @@ class FormatDecisionState(object):
         if not prev or prev.name not in {'NAME', 'DOT'}:
           break
         token = token.previous_token
-      if token and format_token.Subtype.DICTIONARY_VALUE in token.subtypes:
-        if not style.Get('ALLOW_SPLIT_BEFORE_DICT_VALUE'):
-          return False
+      if (token and format_token.Subtype.DICTIONARY_VALUE in token.subtypes
+          and not style.Get('ALLOW_SPLIT_BEFORE_DICT_VALUE')):
+        return False
 
     if previous and previous.value == '.' and current.value == '.':
       return False

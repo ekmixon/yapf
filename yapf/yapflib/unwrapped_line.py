@@ -74,7 +74,7 @@ class UnwrappedLine(object):
           _SpaceRequiredBetween(prev_token, token, self.disable)):
         token.spaces_required_before = 1
 
-      tok_len = len(token.value) if not token.is_pseudo_paren else 0
+      tok_len = 0 if token.is_pseudo_paren else len(token.value)
 
       spaces_required_before = token.spaces_required_before
       if isinstance(spaces_required_before, list):
@@ -277,10 +277,7 @@ def _SpaceRequiredBetween(left, right, is_line_disabled):
     return True
   if left.is_pseudo_paren or right.is_pseudo_paren:
     # There should be a space after the ':' in a dictionary.
-    if left.OpensScope():
-      return True
-    # The closing pseudo-paren shouldn't affect spacing.
-    return False
+    return bool(left.OpensScope())
   if left.is_continuation or right.is_continuation:
     # The continuation node's value has all of the spaces it needs.
     return False
@@ -374,10 +371,8 @@ def _SpaceRequiredBetween(left, right, is_line_disabled):
     if lval in block_list or rval in block_list:
       return False
     if style.Get('ARITHMETIC_PRECEDENCE_INDICATION'):
-      if _PriorityIndicatingNoSpace(left) or _PriorityIndicatingNoSpace(right):
-        return False
-      else:
-        return True
+      return not _PriorityIndicatingNoSpace(
+          left) and not _PriorityIndicatingNoSpace(right)
     else:
       return True
   if (_IsUnaryOperator(left) and lval != 'not' and
@@ -520,23 +515,24 @@ def _CanBreakBefore(prev_token, cur_token):
   if cval == ',':
     # Don't break before a comma.
     return False
-  if prev_token.is_name and cval == '(':
-    # Don't break in the middle of a function definition or call.
-    return False
-  if prev_token.is_name and cval == '[':
-    # Don't break in the middle of an array dereference.
-    return False
+  if prev_token.is_name:
+    if cval == '(':
+      # Don't break in the middle of a function definition or call.
+      return False
+    if cval == '[':
+      # Don't break in the middle of an array dereference.
+      return False
   if cur_token.is_comment and prev_token.lineno == cur_token.lineno:
     # Don't break a comment at the end of the line.
     return False
   if format_token.Subtype.UNARY_OPERATOR in prev_token.subtypes:
     # Don't break after a unary token.
     return False
-  if not style.Get('ALLOW_SPLIT_BEFORE_DEFAULT_OR_NAMED_ASSIGNS'):
-    if (format_token.Subtype.DEFAULT_OR_NAMED_ASSIGN in cur_token.subtypes or
-        format_token.Subtype.DEFAULT_OR_NAMED_ASSIGN in prev_token.subtypes):
-      return False
-  return True
+  return bool(
+      style.Get('ALLOW_SPLIT_BEFORE_DEFAULT_OR_NAMED_ASSIGNS')
+      or format_token.Subtype.DEFAULT_OR_NAMED_ASSIGN not in cur_token.subtypes
+      and
+      format_token.Subtype.DEFAULT_OR_NAMED_ASSIGN not in prev_token.subtypes)
 
 
 def IsSurroundedByBrackets(tok):
@@ -546,26 +542,26 @@ def IsSurroundedByBrackets(tok):
   sq_bracket_count = 0
   previous_token = tok.previous_token
   while previous_token:
-    if previous_token.value == ')':
-      paren_count -= 1
-    elif previous_token.value == '}':
-      brace_count -= 1
-    elif previous_token.value == ']':
-      sq_bracket_count -= 1
-
     if previous_token.value == '(':
       if paren_count == 0:
         return previous_token
       paren_count += 1
-    elif previous_token.value == '{':
-      if brace_count == 0:
-        return previous_token
-      brace_count += 1
+    elif previous_token.value == ')':
+      paren_count -= 1
     elif previous_token.value == '[':
       if sq_bracket_count == 0:
         return previous_token
       sq_bracket_count += 1
 
+    elif previous_token.value == ']':
+      sq_bracket_count -= 1
+
+    elif previous_token.value == '{':
+      if brace_count == 0:
+        return previous_token
+      brace_count += 1
+    elif previous_token.value == '}':
+      brace_count -= 1
     previous_token = previous_token.previous_token
   return None
 
@@ -670,7 +666,4 @@ def _SplitPenalty(prev_token, cur_token):
   if cval == '==':
     # We would rather not split before an equality operator.
     return split_penalty.STRONGLY_CONNECTED
-  if cur_token.ClosesScope():
-    # Give a slight penalty for splitting before the closing scope.
-    return 100
-  return 0
+  return 100 if cur_token.ClosesScope() else 0

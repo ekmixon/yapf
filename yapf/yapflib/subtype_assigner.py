@@ -386,9 +386,8 @@ def _SetArgListSubtype(node, node_subtype, list_subtype):
 
     for child in node.children:
       node_name = pytree_utils.NodeName(child)
-      if node_name not in {'atom', 'arglist', 'power'}:
-        if HasSubtype(child):
-          return True
+      if node_name not in {'atom', 'arglist', 'power'} and HasSubtype(child):
+        return True
 
     return False
 
@@ -435,10 +434,9 @@ def _AppendSubtypeRec(node, subtype, force=True):
 def _InsertPseudoParentheses(node):
   """Insert pseudo parentheses so that dicts can be formatted correctly."""
   comment_node = None
-  if isinstance(node, pytree.Node):
-    if node.children[-1].type == token.COMMENT:
-      comment_node = node.children[-1].clone()
-      node.children[-1].remove()
+  if isinstance(node, pytree.Node) and node.children[-1].type == token.COMMENT:
+    comment_node = node.children[-1].clone()
+    node.children[-1].remove()
 
   first = pytree_utils.FirstLeafNode(node)
   last = pytree_utils.LastLeafNode(node)

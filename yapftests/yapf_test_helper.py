@@ -32,29 +32,30 @@ from yapf.yapflib import subtype_assigner
 class YAPFTest(unittest.TestCase):
 
   def assertCodeEqual(self, expected_code, code):
-    if code != expected_code:
-      msg = ['Code format mismatch:', 'Expected:']
-      linelen = style.Get('COLUMN_LIMIT')
-      for l in expected_code.splitlines():
-        if len(l) > linelen:
-          msg.append('!> %s' % l)
-        else:
-          msg.append(' > %s' % l)
-      msg.append('Actual:')
-      for l in code.splitlines():
-        if len(l) > linelen:
-          msg.append('!> %s' % l)
-        else:
-          msg.append(' > %s' % l)
-      msg.append('Diff:')
-      msg.extend(
-          difflib.unified_diff(
-              code.splitlines(),
-              expected_code.splitlines(),
-              fromfile='actual',
-              tofile='expected',
-              lineterm=''))
-      self.fail('\n'.join(msg))
+    if code == expected_code:
+      return
+    msg = ['Code format mismatch:', 'Expected:']
+    linelen = style.Get('COLUMN_LIMIT')
+    for l in expected_code.splitlines():
+      if len(l) > linelen:
+        msg.append(f'!> {l}')
+      else:
+        msg.append(f' > {l}')
+    msg.append('Actual:')
+    for l in code.splitlines():
+      if len(l) > linelen:
+        msg.append(f'!> {l}')
+      else:
+        msg.append(f' > {l}')
+    msg.append('Diff:')
+    msg.extend(
+        difflib.unified_diff(
+            code.splitlines(),
+            expected_code.splitlines(),
+            fromfile='actual',
+            tofile='expected',
+            lineterm=''))
+    self.fail('\n'.join(msg))
 
 
 def ParseAndUnwrap(code, dumptree=False):

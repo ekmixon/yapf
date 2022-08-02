@@ -60,7 +60,7 @@ def main(argv):
   parser = _BuildParser()
   args = parser.parse_args(argv[1:])
   if args.version:
-    print('yapf {}'.format(__version__))
+    print(f'yapf {__version__}')
     return 0
 
   style_config = args.style
@@ -80,9 +80,7 @@ def main(argv):
                    'from stdin')
 
     original_source = []
-    while True:
-      if sys.stdin.closed:
-        break
+    while not sys.stdin.closed:
       try:
         # Use 'raw_input' instead of 'sys.stdin.read', because otherwise the
         # user will need to hit 'Ctrl-D' more than once if they're inputting
@@ -108,7 +106,7 @@ def main(argv):
           lines=lines,
           verify=args.verify)
     except tokenize.TokenError as e:
-      raise errors.YapfError('%s:%s' % (e.args[1][0], e.args[0]))
+      raise errors.YapfError(f'{e.args[1][0]}:{e.args[0]}')
 
     file_resources.WriteReformattedCode('<stdout>', reformatted_source)
     return 0
@@ -217,7 +215,7 @@ def _FormatFile(filename,
                 verbose=False):
   """Format an individual file."""
   if verbose and not quiet:
-    print('Reformatting %s' % filename)
+    print(f'Reformatting {filename}')
 
   if style_config is None and not no_local_style:
     style_config = file_resources.GetDefaultStyleForDir(
@@ -233,7 +231,7 @@ def _FormatFile(filename,
         verify=verify,
         logger=logging.warning)
   except tokenize.TokenError as e:
-    raise errors.YapfError('%s:%s:%s' % (filename, e.args[1][0], e.args[0]))
+    raise errors.YapfError(f'{filename}:{e.args[1][0]}:{e.args[0]}')
   except SyntaxError as e:
     e.filename = filename
     raise
@@ -357,11 +355,11 @@ def _BuildParser():
   return parser
 
 
-def run_main():  # pylint: disable=invalid-name
+def run_main():# pylint: disable=invalid-name
   try:
     sys.exit(main(sys.argv))
   except errors.YapfError as e:
-    sys.stderr.write('yapf: ' + str(e) + '\n')
+    sys.stderr.write(f'yapf: {str(e)}' + '\n')
     sys.exit(1)
 
 

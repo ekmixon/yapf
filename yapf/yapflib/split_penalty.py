@@ -117,16 +117,16 @@ class _SplitPenaltyAssigner(pytree_visitor.PyTreeVisitor):
       _SetUnbreakable(node.children[arrow_idx])
       _SetStronglyConnected(node.children[arrow_idx + 1])
 
-  def Visit_lambdef(self, node):  # pylint: disable=invalid-name
+  def Visit_lambdef(self, node):# pylint: disable=invalid-name
     # lambdef ::= 'lambda' [varargslist] ':' test
     # Loop over the lambda up to and including the colon.
     allow_multiline_lambdas = style.Get('ALLOW_MULTILINE_LAMBDAS')
     if not allow_multiline_lambdas:
       for child in node.children:
-        if pytree_utils.NodeName(child) == 'COMMENT':
-          if re.search(r'pylint:.*disable=.*\bg-long-lambda', child.value):
-            allow_multiline_lambdas = True
-            break
+        if pytree_utils.NodeName(child) == 'COMMENT' and re.search(
+            r'pylint:.*disable=.*\bg-long-lambda', child.value):
+          allow_multiline_lambdas = True
+          break
 
     if allow_multiline_lambdas:
       _SetExpressionPenalty(node, STRONGLY_CONNECTED)
@@ -205,7 +205,7 @@ class _SplitPenaltyAssigner(pytree_visitor.PyTreeVisitor):
         # all possible.
         _SetStronglyConnected(child)
 
-  def Visit_trailer(self, node):  # pylint: disable=invalid-name
+  def Visit_trailer(self, node):# pylint: disable=invalid-name
     # trailer ::= '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
     if node.children[0].value == '.':
       before = style.Get('SPLIT_BEFORE_DOT')
@@ -235,12 +235,10 @@ class _SplitPenaltyAssigner(pytree_visitor.PyTreeVisitor):
         _SetStronglyConnected(node.children[1].children[0])
         _SetStronglyConnected(node.children[1].children[2])
 
-        # Still allow splitting around the operator.
-        split_before = ((name.endswith('_test') and
-                         style.Get('SPLIT_BEFORE_LOGICAL_OPERATOR')) or
-                        (name.endswith('_expr') and
-                         style.Get('SPLIT_BEFORE_BITWISE_OPERATOR')))
-        if split_before:
+        if split_before := ((name.endswith('_test')
+                             and style.Get('SPLIT_BEFORE_LOGICAL_OPERATOR'))
+                            or (name.endswith('_expr')
+                                and style.Get('SPLIT_BEFORE_BITWISE_OPERATOR'))):
           _SetSplitPenalty(
               pytree_utils.LastLeafNode(node.children[1].children[1]), 0)
         else:
@@ -611,10 +609,10 @@ def _StronglyConnectedCompOp(op):
     if (pytree_utils.FirstLeafNode(op.children[1]).value == 'is' and
         pytree_utils.LastLeafNode(op.children[1]).value == 'not'):
       return True
-  if (isinstance(op.children[1], pytree.Leaf) and
-      op.children[1].value in {'==', 'in'}):
-    return True
-  return False
+  return isinstance(op.children[1], pytree.Leaf) and op.children[1].value in {
+      '==',
+      'in',
+  }
 
 
 def _DecrementSplitPenalty(node, amt):

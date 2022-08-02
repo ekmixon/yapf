@@ -479,7 +479,7 @@ class IsIgnoredTest(unittest.TestCase):
 
   def test_trailing_slash(self):
     self.assertTrue(file_resources.IsIgnored('z', ['z']))
-    self.assertTrue(file_resources.IsIgnored('z', ['z' + os.path.sep]))
+    self.assertTrue(file_resources.IsIgnored('z', [f'z{os.path.sep}']))
 
 
 class BufferedByteStream(object):

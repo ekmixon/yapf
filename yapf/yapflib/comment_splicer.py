@@ -241,8 +241,9 @@ def _CreateCommentsFromPrefix(comment_prefix,
           type=token.COMMENT,
           value='\n'.join(comment_block),
           context=('', (new_lineno, comment_column)))
-      comment_node = comment_leaf if not standalone else pytree.Node(
-          pygram.python_symbols.simple_stmt, [comment_leaf])
+      comment_node = (pytree.Node(pygram.python_symbols.simple_stmt,
+                                  [comment_leaf])
+                      if standalone else comment_leaf)
       comments.append(comment_node)
 
     while index < len(lines) and not lines[index].lstrip():

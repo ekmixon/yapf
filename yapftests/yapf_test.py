@@ -78,8 +78,7 @@ class FormatFileTest(unittest.TestCase):
 
   def assertCodeEqual(self, expected_code, code):
     if code != expected_code:
-      msg = 'Code format mismatch:\n'
-      msg += 'Expected:\n >'
+      msg = 'Code format mismatch:\n' + 'Expected:\n >'
       msg += '\n > '.join(expected_code.splitlines())
       msg += '\nActual:\n >'
       msg += '\n > '.join(code.splitlines())

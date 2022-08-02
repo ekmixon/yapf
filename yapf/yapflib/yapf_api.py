@@ -146,7 +146,7 @@ def FormatCode(unformatted_source,
   try:
     tree = pytree_utils.ParseCodeToTree(unformatted_source)
   except parse.ParseError as e:
-    e.msg = filename + ': ' + e.msg
+    e.msg = f'{filename}: {e.msg}'
     raise
 
   # Run passes on the tree, modifying it in place.
@@ -178,14 +178,12 @@ def FormatCode(unformatted_source,
   return reformatted_source, True
 
 
-def _CheckPythonVersion():  # pragma: no cover
-  errmsg = 'yapf is only supported for Python 2.7 or 3.4+'
-  if sys.version_info[0] == 2:
-    if sys.version_info[1] < 7:
-      raise RuntimeError(errmsg)
-  elif sys.version_info[0] == 3:
-    if sys.version_info[1] < 4:
-      raise RuntimeError(errmsg)
+def _CheckPythonVersion():# pragma: no cover
+  if (sys.version_info[0] == 2 and sys.version_info[1] < 7
+      or sys.version_info[0] != 2 and sys.version_info[0] == 3
+      and sys.version_info[1] < 4):
+    errmsg = 'yapf is only supported for Python 2.7 or 3.4+'
+    raise RuntimeError(errmsg)
 
 
 def ReadFile(filename, logger=None):
@@ -270,9 +268,9 @@ def _MarkLinesToFormat(uwlines, lines):
         while index < len(uwlines):
           uwline = uwlines[index]
           line = uwline.first.value.strip()
-          if uwline.is_comment and _EnableYAPF(line):
-            if not _DisableYAPF(line):
-              break
+          if (uwline.is_comment and _EnableYAPF(line)
+              and not _DisableYAPF(line)):
+            break
           uwline.disable = True
           index += 1
     elif re.search(DISABLE_PATTERN, uwline.last.value.strip(), re.IGNORECASE):

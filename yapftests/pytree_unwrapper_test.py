@@ -300,10 +300,8 @@ class MatchBracketsTest(yapf_test_helper.YAPFTest):
     """
     actual = []
     for uwl in uwlines:
-      filtered_values = [(ft, ft.matching_bracket)
-                         for ft in uwl.tokens
-                         if ft.name not in pytree_utils.NONSEMANTIC_TOKENS]
-      if filtered_values:
+      if filtered_values := [(ft, ft.matching_bracket) for ft in uwl.tokens
+                             if ft.name not in pytree_utils.NONSEMANTIC_TOKENS]:
         actual.append(filtered_values)
 
     for index, bracket_list in enumerate(list_of_expected):

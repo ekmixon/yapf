@@ -114,10 +114,7 @@ def _RetainHorizontalSpacing(uwline):
 
 def _RetainRequiredVerticalSpacing(cur_uwline, prev_uwline, lines):
   """Retain all vertical spacing between lines."""
-  prev_tok = None
-  if prev_uwline is not None:
-    prev_tok = prev_uwline.last
-
+  prev_tok = prev_uwline.last if prev_uwline is not None else None
   if cur_uwline.disable:
     # After the first token we are acting on a single line. So if it is
     # disabled we must not reformat.
@@ -133,16 +130,14 @@ def _RetainRequiredVerticalSpacingBetweenTokens(cur_tok, prev_tok, lines):
   if prev_tok is None:
     return
 
-  if prev_tok.is_string:
-    prev_lineno = prev_tok.lineno + prev_tok.value.count('\n')
-  elif prev_tok.is_pseudo_paren:
-    if not prev_tok.previous_token.is_multiline_string:
-      prev_lineno = prev_tok.previous_token.lineno
-    else:
-      prev_lineno = prev_tok.lineno
-  else:
+  if (not prev_tok.is_string and prev_tok.is_pseudo_paren
+      and not prev_tok.previous_token.is_multiline_string):
+    prev_lineno = prev_tok.previous_token.lineno
+  elif (not prev_tok.is_string and prev_tok.is_pseudo_paren
+        or not prev_tok.is_string):
     prev_lineno = prev_tok.lineno
-
+  else:
+    prev_lineno = prev_tok.lineno + prev_tok.value.count('\n')
   if cur_tok.is_comment:
     cur_lineno = cur_tok.lineno - cur_tok.value.count('\n')
   else:
@@ -169,9 +164,9 @@ def _RetainVerticalSpacingBeforeComments(uwline):
   """Retain vertical spacing before comments."""
   prev_token = None
   for tok in uwline.tokens:
-    if tok.is_comment and prev_token:
-      if tok.lineno - tok.value.count('\n') - prev_token.lineno > 1:
-        tok.AdjustNewlinesBefore(ONE_BLANK_LINE)
+    if (tok.is_comment and prev_token
+        and tok.lineno - tok.value.count('\n') - prev_token.lineno > 1):
+      tok.AdjustNewlinesBefore(ONE_BLANK_LINE)
 
     prev_token = tok
 
@@ -286,11 +281,7 @@ def _AlignTrailingComments(final_lines):
         all_pc_line_lengths = []  # All pre-comment line lengths
         max_line_length = 0
 
-        while True:
-          # EOF
-          if final_lines_index + len(all_pc_line_lengths) == len(final_lines):
-            break
-
+        while final_lines_index + len(all_pc_line_lengths) != len(final_lines):
           this_line = final_lines[final_lines_index + len(all_pc_line_lengths)]
 
           # Blank line - note that content is preformatted so we don't need to
@@ -322,7 +313,7 @@ def _AlignTrailingComments(final_lines):
             if line_tok.is_comment:
               pc_line_lengths.append(len(line_content))
             else:
-              line_content += '{}{}'.format(whitespace_prefix, line_tok.value)
+              line_content += f'{whitespace_prefix}{line_tok.value}'
 
           if pc_line_lengths:
             max_line_length = max(max_line_length, max(pc_line_lengths))
@@ -332,12 +323,11 @@ def _AlignTrailingComments(final_lines):
         # Calculate the aligned column value
         max_line_length += 2
 
-        aligned_col = None
-        for potential_col in tok.spaces_required_before:
-          if potential_col > max_line_length:
-            aligned_col = potential_col
-            break
-
+        aligned_col = next(
+            (potential_col for potential_col in tok.spaces_required_before
+             if potential_col > max_line_length),
+            None,
+        )
         if aligned_col is None:
           aligned_col = max_line_length
 
@@ -365,8 +355,7 @@ def _AlignTrailingComments(final_lines):
 
               for comment_line_index, comment_line in enumerate(
                   line_tok.value.split('\n')):
-                line_content.append('{}{}'.format(whitespace,
-                                                  comment_line.strip()))
+                line_content.append(f'{whitespace}{comment_line.strip()}')
 
                 if comment_line_index == 0:
                   whitespace = ' ' * (aligned_col - 1)
@@ -401,8 +390,7 @@ def _FormatFinalLines(final_lines, verify):
     formatted_line = []
     for tok in line.tokens:
       if not tok.is_pseudo_paren:
-        formatted_line.append(tok.formatted_whitespace_prefix)
-        formatted_line.append(tok.value)
+        formatted_line.extend((tok.formatted_whitespace_prefix, tok.value))
       elif (not tok.next_token.whitespace_prefix.startswith('\n') and
             not tok.next_token.whitespace_prefix.startswith(' ')):
         if (tok.previous_token.value == ':' or
@@ -645,12 +633,12 @@ def _CalculateNumberOfNewlines(first_token, indent_depth, prev_uwline,
     # The docstring shouldn't have a newline before it.
     return NO_BLANK_LINES
 
-  if first_token.is_name and not indent_depth:
-    if prev_uwline.first.value in {'from', 'import'}:
-      # Support custom number of blank lines between top-level imports and
-      # variable definitions.
-      return 1 + style.Get(
-          'BLANK_LINES_BETWEEN_TOP_LEVEL_IMPORTS_AND_VARIABLES')
+  if (first_token.is_name and not indent_depth
+      and prev_uwline.first.value in {'from', 'import'}):
+    # Support custom number of blank lines between top-level imports and
+    # variable definitions.
+    return 1 + style.Get(
+        'BLANK_LINES_BETWEEN_TOP_LEVEL_IMPORTS_AND_VARIABLES')
 
   prev_last_token = prev_uwline.last
   if prev_last_token.is_docstring:
@@ -676,28 +664,24 @@ def _CalculateNumberOfNewlines(first_token, indent_depth, prev_uwline,
     if not indent_depth:
       # This is a top-level class or function.
       is_inline_comment = prev_last_token.whitespace_prefix.count('\n') == 0
-      if (not prev_uwline.disable and prev_last_token.is_comment and
-          not is_inline_comment):
-        # This token follows a non-inline comment.
-        if _NoBlankLinesBeforeCurrentToken(prev_last_token.value, first_token,
-                                           prev_last_token):
-          # Assume that the comment is "attached" to the current line.
-          # Therefore, we want two blank lines before the comment.
-          index = len(final_lines) - 1
-          while index > 0:
-            if not final_lines[index - 1].is_comment:
-              break
-            index -= 1
-          if final_lines[index - 1].first.value == '@':
-            final_lines[index].first.AdjustNewlinesBefore(NO_BLANK_LINES)
-          else:
-            prev_last_token.AdjustNewlinesBefore(
-                1 + style.Get('BLANK_LINES_AROUND_TOP_LEVEL_DEFINITION'))
-          if first_token.newlines is not None:
-            pytree_utils.SetNodeAnnotation(first_token.node,
-                                           pytree_utils.Annotation.NEWLINES,
-                                           None)
-          return NO_BLANK_LINES
+      if (not prev_uwline.disable and prev_last_token.is_comment
+          and not is_inline_comment) and _NoBlankLinesBeforeCurrentToken(
+              prev_last_token.value, first_token, prev_last_token):
+        # Assume that the comment is "attached" to the current line.
+        # Therefore, we want two blank lines before the comment.
+        index = len(final_lines) - 1
+        while index > 0 and final_lines[index - 1].is_comment:
+          index -= 1
+        if final_lines[index - 1].first.value == '@':
+          final_lines[index].first.AdjustNewlinesBefore(NO_BLANK_LINES)
+        else:
+          prev_last_token.AdjustNewlinesBefore(
+              1 + style.Get('BLANK_LINES_AROUND_TOP_LEVEL_DEFINITION'))
+        if first_token.newlines is not None:
+          pytree_utils.SetNodeAnnotation(first_token.node,
+                                         pytree_utils.Annotation.NEWLINES,
+                                         None)
+        return NO_BLANK_LINES
     elif _IsClassOrDef(prev_uwline.first):
       if first_nested and not style.Get(
           'BLANK_LINE_BEFORE_NESTED_CLASS_OR_DEF'):
@@ -793,5 +777,5 @@ def _NoBlankLinesBeforeCurrentToken(text, cur_token, prev_token):
   cur_token_lineno = cur_token.lineno
   if cur_token.is_comment:
     cur_token_lineno -= cur_token.value.count('\n')
-  num_newlines = text.count('\n') if not prev_token.is_comment else 0
+  num_newlines = 0 if prev_token.is_comment else text.count('\n')
   return prev_token.lineno + num_newlines == cur_token_lineno - 1

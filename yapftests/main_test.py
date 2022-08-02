@@ -68,8 +68,7 @@ def patched_input(code):
   """Monkey patch code as though it were coming from stdin."""
 
   def lines():
-    for line in code.splitlines():
-      yield line
+    yield from code.splitlines()
     raise EOFError()
 
   def patch_raw_input(lines=lines()):
@@ -140,5 +139,5 @@ class MainTest(unittest.TestCase):
     with captured_output() as (out, _):
       ret = yapf.main(['-', '--version'])
       self.assertEqual(ret, 0)
-      version = 'yapf {}\n'.format(yapf.__version__)
+      version = f'yapf {yapf.__version__}\n'
       self.assertEqual(version, out.getvalue())

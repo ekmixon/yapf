@@ -112,10 +112,10 @@ class _BlankLineCalculator(pytree_visitor.PyTreeVisitor):
     Arguments:
       node: (pytree.Node) The node to visit.
     """
-    if self.last_was_class_or_function:
-      if pytree_utils.NodeName(node) in _PYTHON_STATEMENTS:
-        leaf = pytree_utils.FirstLeafNode(node)
-        _SetNumNewlines(leaf, self._GetNumNewlines(leaf))
+    if (self.last_was_class_or_function
+        and pytree_utils.NodeName(node) in _PYTHON_STATEMENTS):
+      leaf = pytree_utils.FirstLeafNode(node)
+      _SetNumNewlines(leaf, self._GetNumNewlines(leaf))
     self.last_was_class_or_function = False
     super(_BlankLineCalculator, self).DefaultNodeVisit(node)
 
@@ -158,8 +158,8 @@ class _BlankLineCalculator(pytree_visitor.PyTreeVisitor):
     return _ONE_BLANK_LINE
 
   def _IsTopLevel(self, node):
-    return (not (self.class_level or self.function_level) and
-            _StartsInZerothColumn(node))
+    return (not self.class_level and not self.function_level
+            and _StartsInZerothColumn(node))
 
 
 def _SetNumNewlines(node, num_newlines):

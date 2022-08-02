@@ -385,10 +385,10 @@ def _DetermineMustSplitAnnotation(node):
     return
   if not _ContainsComments(node):
     token = next(node.parent.leaves())
-    if token.value == '(':
-      if sum(1 for ch in node.children
-             if pytree_utils.NodeName(ch) == 'COMMA') < 2:
-        return
+    if (token.value == '('
+        and sum(pytree_utils.NodeName(ch) == 'COMMA'
+                for ch in node.children) < 2):
+      return
     if (not isinstance(node.children[-1], pytree.Leaf) or
         node.children[-1].value != ','):
       return
@@ -411,10 +411,7 @@ def _ContainsComments(node):
   """Return True if the list has a comment in it."""
   if isinstance(node, pytree.Leaf):
     return node.type == grammar_token.COMMENT
-  for child in node.children:
-    if _ContainsComments(child):
-      return True
-  return False
+  return any(_ContainsComments(child) for child in node.children)
 
 
 def _SetMustSplitOnFirstLeaf(node):
